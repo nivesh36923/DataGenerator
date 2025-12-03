@@ -1,64 +1,105 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import LabelEncoder
 
-# 1. Page Configuration
-# This sets the tab title and makes the app use the full width of the screen
-st.set_page_config(
-    page_title="Data Science Doctor",
-    layout="wide"
-)
+# 1. Page Config
+st.set_page_config(page_title="Data Science Doctor", layout="wide")
+st.title("👨‍⚕️ Data Science Doctor: Auto-Encoder & Diagnosis")
 
-# 2. App Title and Description
-st.title("👨‍⚕️ Data Science Doctor: Dataset Viewer")
-st.markdown("Upload your CSV file below to inspect the data before processing.")
-st.markdown("---") # Adds a horizontal line for separation
+# Initialize session state to store processed data for the GAN later
+if 'processed_df' not in st.session_state:
+    st.session_state.processed_df = None
 
-# 3. The File Uploader Widget
-# We restrict the type to 'csv' so users don't upload images/pdfs by accident
-uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+# 2. File Upload
+uploaded_file = st.file_uploader("Upload your Dataset (CSV)", type="csv")
 
-# 4. Logic to handle the file once uploaded
-if uploaded_file is not None:
-    try:
-        # Read the CSV into a Pandas DataFrame
-        df = pd.read_csv(uploaded_file)
+if uploaded_file:
+    # Read Data
+    df = pd.read_csv(uploaded_file)
+    
+    # --- AUTO-DETECTION LOGIC ---
+    # We automatically grab the last column name as the target
+    target_col = df.columns[-1]
+    
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.info(f"🤖 Auto-Detected Target Column: **'{target_col}'**")
+        st.write("Raw Data Preview (First 5 rows):")
+        st.write(df.head())
+
+    # --- IMBALANCE DIAGNOSIS ---
+    with col2:
+        st.subheader("📊 Imbalance Diagnosis")
         
-        # Display Basic Info
-        col1, col2 = st.columns(2)
-        col1.success(f"File uploaded successfully!")
-        col2.info(f"Shape: {df.shape[0]} rows, {df.shape[1]} columns")
+        # Count classes
+        counts = df[target_col].value_counts()
+        total = len(df)
+        
+        # Calculate Percentages
+        stats_df = pd.DataFrame({
+            "Count": counts,
+            "Percentage": (counts / total) * 100
+        })
+        
+        # Display Metrics
+        st.table(stats_df.style.format({"Percentage": "{:.2f}%"}))
+        
+        # Visual Check
+        fig, ax = plt.subplots(figsize=(6, 2.5))
+        sns.barplot(x=stats_df.index, y=stats_df['Count'], palette="magma", ax=ax)
+        ax.set_title("Class Distribution")
+        st.pyplot(fig)
 
-        # Display the Data
-        st.subheader("🔍 Data Preview")
-        # st.dataframe is interactive (you can scroll and sort columns)
-        st.dataframe(df.head(10), use_container_width=True)
+    st.markdown("---")
 
-        # Optional: Show column names to help us identify the Target Class later
-        with st.expander("See Column Names"):
-            st.write(list(df.columns))
-        # ... (Previous code: st.dataframe(df.head...)) ...
+    # --- AUTO-ENCODING ENGINE ---
+    st.subheader("⚙️ Data Processing Engine")
+    st.caption("Deep Learning models only understand numbers. Converting text to numbers...")
 
-        st.markdown("---")
-        st.subheader("📊 Class Imbalance Diagnosis")
+    # Create a copy so we don't mess up the original display
+    df_encoded = df.copy()
+    encoders = {} # Dictionary to store our encoders (so we can decode later if needed)
 
-        # 1. Select the Target Column
-        # We let the user pick which column contains the classes (e.g., 0 vs 1)
-        target_column = st.selectbox("Select the Target Column (Class/Label):", df.columns)
+    # Loop through all columns
+    for col in df_encoded.columns:
+        # Check if the column is Text (Object) or Categorical
+        if df_encoded[col].dtype == 'object' or df_encoded[col].dtype.name == 'category':
+            le = LabelEncoder()
+            # Convert text to numbers
+            df_encoded[col] = le.fit_transform(df_encoded[col].astype(str))
+            # Save the encoder (optional, good practice)
+            encoders[col] = le
+    
+    # Display the result
+    st.success("✅ Encoding Complete! Data is ready for the GAN.")
+    
+    with st.expander("View Encoded Numeric Data (Input for AI)"):
+        st.dataframe(df_encoded.head(10), use_container_width=True)
+        st.markdown(f"**Shape:** {df_encoded.shape}")
 
-        if target_column:
-            # 2. Calculate the counts
-            class_counts = df[target_column].value_counts()
-            
-            # Display the raw numbers
-            col1, col2 = st.columns(2)
-            col1.write("Class Distribution:")
-            col1.write(class_counts)
+    # Store in session state so the next step (GAN) can access it
+    st.session_state.processed_df = df_encoded
 
-            
-
-    except Exception as e:
-        st.error(f"Error processing file: {e}")
+    # --- READY FOR NEXT STEP ---
+    st.markdown("---")
+    st.write("### 🚀 Next Step: Synthetic Data Generation")
+    if st.button("Initialize GAN Model"):
+        st.info("Pass this `st.session_state.processed_df` to the PyTorch function in the next step.")
 
 else:
-    # Message shown when no file is uploaded yet
-    st.info("Waiting for file upload...")
+    st.info("Please upload a CSV file to begin.")
+```
+
+### Key Changes Explained
+
+1.  **`target_col = df.columns[-1]`**:
+    This single line looks at the list of column names and grabs the very last one. No user input required.
+
+2.  **The Encoding Loop**:
+    ```python
+    if df_encoded[col].dtype == 'object':
+         df_encoded[col] = le.fit_transform(...)
