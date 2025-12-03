@@ -92,14 +92,14 @@ if uploaded_file:
 
 else:
     st.info("Please upload a CSV file to begin.")
-```
+# ```
 
-### Key Changes Explained
+# ### Key Changes Explained
 
-1.  **`target_col = df.columns[-1]`**:
-    This single line looks at the list of column names and grabs the very last one. No user input required.
+# 1.  **`target_col = df.columns[-1]`**:
+#     This single line looks at the list of column names and grabs the very last one. No user input required.
 
-2.  **The Encoding Loop**:
-    ```python
-    if df_encoded[col].dtype == 'object':
-         df_encoded[col] = le.fit_transform(...)
+# 2.  **The Encoding Loop**:
+#     ```python
+#     if df_encoded[col].dtype == 'object':
+#          df_encoded[col] = le.fit_transform(...)
