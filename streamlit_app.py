@@ -7,7 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # 1. Page Config
 st.set_page_config(page_title="Data Science Doctor", layout="wide")
-st.title("👨‍⚕️ Data Science Doctor: Auto-Encoder & Diagnosis")
+st.title("👨‍⚕️ This helps to maintain the distribution of the data!!")
 
 # Initialize session state to store processed data for the GAN later
 if 'processed_df' not in st.session_state:
